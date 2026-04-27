@@ -1,0 +1,30 @@
+---Q1 & Q2: Base Clean Table
+WITH Clean_Customer_ID AS (
+  SELECT 
+    array_to_string(regexp_extract_all(loan.customer_id, "[a-zA-Z0-9]"), "") AS cln_customer_id,
+    loan.loan_id,
+    loan.loan_status,
+    loan.loan_amount,
+    loan.funded_amount,
+    loan.term,
+    loan.state,
+    loan.issue_date,
+    loan.issue_year,
+    loan.int_rate
+  FROM `nextproject-001.FIP.loan` AS loan
+  WHERE loan.loan_status IN ('Current', 'In Grace Period', 'Late (31-120 days)','Late (16-30 days)', 'Default')
+)
+
+--Q5&Q6: Cohort Summary
+SELECT
+  COUNT(DISTINCT t1.cln_customer_id) AS total_debitor,
+  SUM(t1.funded_amount) AS oustanding_amount,
+  SUM(CASE WHEN t1.loan_status != 'Default' THEN t1.funded_amount ELSE 0 END) AS ENR,
+  1 - (
+      SUM(CASE WHEN t1.loan_status IN('Late (31-120 days)','Default') THEN t1.funded_amount ELSE 0 END)/
+      SUM(t1.funded_amount)
+  ) AS TKB30,
+  t1.issue_year AS Year
+FROM Clean_Customer_ID AS t1
+GROUP BY Year
+ORDER BY Year;
