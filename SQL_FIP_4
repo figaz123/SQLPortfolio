@@ -1,0 +1,34 @@
+--- Block 4: Tableau Export Dataset
+WITH Clean_Customer_ID AS (
+  SELECT 
+    array_to_string(regexp_extract_all(loan.customer_id, "[a-zA-Z0-9]"), "") AS cln_customer_id,
+    loan.loan_id,
+    loan.loan_amount,
+    loan.purpose, -- Required for Q7e
+    loan.issue_year
+  FROM `nextproject-001.FIP.loan` AS loan
+  WHERE loan.loan_status IN ('Current', 'In Grace Period', 'Late (31-120 days)','Late (16-30 days)', 'Default')
+),
+
+Clean_Customer AS (
+  SELECT 
+    array_to_string(regexp_extract_all(customer.customer_id, "[a-zA-Z0-9]"), "") AS cln_customer_id,
+    customer.addr_state -- Required for Q7d
+  FROM `nextproject-001.FIP.customer` AS customer
+)
+
+SELECT
+  CASE
+    WHEN l.issue_year = 2014 THEN '1. Anomaly Cohort (2014)'
+    WHEN l.issue_year = 2019 THEN '2. Benchmark Cohort (2019)'
+    ELSE '3. Other Cohorts'
+  END AS cohort_segment,
+  c.addr_state,
+  l.purpose,
+  COUNT(DISTINCT l.cln_customer_id) AS total_borrowers,
+  SUM(l.loan_amount) AS total_loan_volume
+
+FROM Clean_Customer_ID AS l 
+LEFT JOIN Clean_Customer AS c ON l.cln_customer_id = c.cln_customer_id
+WHERE l.issue_year IS NOT NULL 
+GROUP BY cohort_segment, c.addr_state, l.purpose;
